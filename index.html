@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Planner</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3ef;
+      --surface: #ffffff;
+      --border: #d8d4cc;
+      --border-light: #ece9e3;
+      --text: #1a1916;
+      --text-muted: #8a8780;
+      --accent: #3d5afe;
+      --accent-light: #e8ecff;
+      --checked-text: #a0b8a0;
+      --header-bg: #f0ede7;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      --radius: 6px;
+    }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 20px 80px;
+    }
+
+    header {
+      max-width: 1100px;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .title-group h1 {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      letter-spacing: -0.02em;
+    }
+    .title-group .subtitle {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .week-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+    }
+    .week-nav button {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 1rem; line-height: 1;
+      padding: 2px 4px; border-radius: 4px; transition: color .15s, background .15s;
+    }
+    .week-nav button:hover { color: var(--text); background: var(--border-light); }
+    .week-label { font-size: 0.75rem; font-weight: 500; min-width: 100px; text-align: center; }
+
+    .btn-add-col {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      background: var(--surface); border: 1px dashed var(--border);
+      color: var(--text-muted); padding: 7px 14px; border-radius: var(--radius);
+      cursor: pointer; transition: all .15s; letter-spacing: 0.04em;
+    }
+    .btn-add-col:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    .save-indicator { font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.05em; }
+
+    /* TABLE */
+    .table-wrap {
+      max-width: 1100px; margin: 0 auto; overflow-x: auto;
+      border-radius: 10px; box-shadow: var(--shadow);
+      border: 1px solid var(--border); background: var(--surface);
+    }
+
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    col.col-day { width: 88px; }
+    col.col-task { min-width: 180px; }
+
+    thead th {
+      background: var(--header-bg); border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border-light);
+      padding: 10px 14px; font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+      text-align: left; position: sticky; top: 0; z-index: 10;
+    }
+    thead th:last-child { border-right: none; }
+
+    .th-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .col-name-input {
+      font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: none; border: none; outline: none; color: var(--text); width: 100%; padding: 0;
+    }
+    .btn-del-col {
+      background: none; border: none; cursor: pointer; color: var(--border);
+      font-size: 0.9rem; padding: 2px; border-radius: 3px;
+      transition: color .15s; opacity: 0;
+    }
+    thead th:hover .btn-del-col { opacity: 1; }
+    .btn-del-col:hover { color: #e55; }
+
+    /* ROWS */
+    tbody tr { border-bottom: 1px solid var(--border-light); }
+    tbody tr:last-child { border-bottom: none; }
+
+    td { vertical-align: top; border-right: 1px solid var(--border-light); padding: 0; }
+    td:last-child { border-right: none; }
+
+    .day-cell {
+      padding: 12px 14px; white-space: nowrap;
+      background: var(--header-bg); border-right: 1px solid var(--border) !important;
+    }
+    .day-name { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.05em; color: var(--text-muted); text-transform: uppercase; }
+    .day-num { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 300; line-height: 1; margin-top: 2px; }
+    tr.today .day-num { color: var(--accent); }
+    tr.today .day-cell { background: var(--accent-light); }
+
+    /* TASK CELL */
+    .task-cell { padding: 8px 10px; min-height: 64px; position: relative; transition: background .15s; }
+    .task-cell.drag-over {
+      background: #eef1ff;
+      outline: 2px dashed var(--accent);
+      outline-offset: -3px;
+      border-radius: 4px;
+    }
+
+    .task-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+    /* TASK ITEM */
+    .task-item {
+      display: flex; align-items: flex-start; gap: 7px;
+      padding: 4px 6px; border-radius: 5px;
+      transition: background .12s;
+      cursor: grab; position: relative;
+    }
+    .task-item:active { cursor: grabbing; }
+    .task-item:hover { background: var(--border-light); }
+    .task-item.dragging { opacity: 0.3; }
+
+    /* HIGHLIGHT COLOURS */
+    .task-item[data-color="blue"]   { background: #dbeafe !important; }
+    .task-item[data-color="green"]  { background: #dcfce7 !important; }
+    .task-item[data-color="yellow"] { background: #fef9c3 !important; }
+    .task-item[data-color="red"]    { background: #fee2e2 !important; }
+    .task-item[data-color="purple"] { background: #ede9fe !important; }
+    .task-item[data-color="orange"] { background: #ffedd5 !important; }
+    .task-item[data-color="pink"]   { background: #fce7f3 !important; }
+
+    .task-check {
+      appearance: none; -webkit-appearance: none;
+      width: 14px; height: 14px; border: 1.5px solid var(--border);
+      border-radius: 3px; cursor: pointer; flex-shrink: 0; margin-top: 3px;
+      background: white; transition: all .15s; position: relative;
+    }
+    .task-check:checked { background: var(--accent); border-color: var(--accent); }
+    .task-check:checked::after {
+      content: ''; position: absolute; left: 3px; top: 1px;
+      width: 5px; height: 7px; border: 1.5px solid #fff;
+      border-top: none; border-left: none; transform: rotate(45deg);
+    }
+
+    .task-text {
+      font-size: 0.78rem; line-height: 1.45; color: var(--text); flex: 1;
+      outline: none; border: none; background: transparent;
+      font-family: 'DM Mono', monospace; padding: 0;
+      min-width: 0; word-break: break-word; transition: color .15s;
+    }
+    .task-text:empty::before { content: attr(placeholder); color: var(--text-muted); pointer-events: none; }
+    .task-item.done .task-text { color: var(--checked-text); text-decoration: line-through; }
+
+    .task-duration { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; margin-top: 3px; flex-shrink: 0; }
+
+    .task-actions {
+      display: flex; gap: 2px; align-items: center; flex-shrink: 0;
+      opacity: 0; transition: opacity .15s;
+    }
+    .task-item:hover .task-actions { opacity: 1; }
+
+    .btn-color, .btn-del-task {
+      background: none; border: none; cursor: pointer;
+      padding: 2px 3px; border-radius: 3px; line-height: 1;
+      transition: background .12s; color: var(--text-muted); font-size: 0.75rem;
+    }
+    .btn-color:hover { background: rgba(0,0,0,0.08); }
+    .btn-del-task:hover { color: #e55; background: #fee2e2; }
+
+    /* ADD TASK */
+    .btn-add-task {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; padding: 4px; border-radius: 4px;
+      display: flex; align-items: center; gap: 5px; margin-top: 4px;
+      transition: color .15s, background .15s; opacity: 0;
+    }
+    .task-cell:hover .btn-add-task { opacity: 1; }
+    .btn-add-task:hover { color: var(--accent); background: var(--accent-light); }
+
+    /* COLOUR PICKER POPOVER */
+    .color-popover {
+      position: fixed; z-index: 200;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+      display: flex; gap: 8px; align-items: center;
+      animation: popIn .12s ease;
+    }
+    @keyframes popIn { from { opacity:0; transform:scale(0.88); } to { opacity:1; transform:scale(1); } }
+
+    .color-swatch {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid transparent;
+      cursor: pointer; transition: transform .12s, border-color .12s;
+    }
+    .color-swatch:hover { transform: scale(1.25); }
+    .color-swatch.active { border-color: #1a1916; }
+    .color-swatch[data-color="none"]   { background: #e5e7eb; }
+    .color-swatch[data-color="blue"]   { background: #3b82f6; }
+    .color-swatch[data-color="green"]  { background: #22c55e; }
+    .color-swatch[data-color="yellow"] { background: #eab308; }
+    .color-swatch[data-color="red"]    { background: #ef4444; }
+    .color-swatch[data-color="purple"] { background: #a855f7; }
+    .color-swatch[data-color="orange"] { background: #f97316; }
+    .color-swatch[data-color="pink"]   { background: #ec4899; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 24px; width: 300px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      transform: translateY(8px); transition: transform .15s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal h3 { font-family: 'Fraunces', serif; font-weight: 300; font-size: 1.1rem; margin-bottom: 16px; }
+    .modal label { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 6px; }
+    .modal input[type="text"] {
+      font-family: 'DM Mono', monospace; font-size: 0.82rem; width: 100%;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px 10px; outline: none; color: var(--text); background: var(--bg); margin-bottom: 16px;
+    }
+    .modal input:focus { border-color: var(--accent); }
+    .modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
+    .btn-primary, .btn-secondary {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      padding: 7px 16px; border-radius: var(--radius);
+      cursor: pointer; border: 1px solid; transition: all .15s; letter-spacing: 0.04em;
+    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2a45e8; }
+    .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
+    .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="title-group">
+    <h1>Weekly Planner</h1>
+    <div class="subtitle" id="week-subtitle"></div>
+  </div>
+  <div class="header-controls">
+    <span class="save-indicator" id="save-indicator">All changes saved</span>
+    <div class="week-nav">
+      <button id="prev-week">‹</button>
+      <span class="week-label" id="week-label"></span>
+      <button id="next-week">›</button>
+    </div>
+    <button class="btn-add-col" id="add-col-btn">+ Add column</button>
+  </div>
+</header>
+
+<div class="table-wrap">
+  <table id="planner-table">
+    <colgroup id="colgroup"><col class="col-day" /></colgroup>
+    <thead><tr id="header-row"><th>Day</th></tr></thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Add Task</h3>
+    <label>Task name</label>
+    <input type="text" id="modal-task-name" placeholder="e.g. Micro Lecture 5" maxlength="80" />
+    <label>Duration (optional)</label>
+    <input type="text" id="modal-duration" placeholder="e.g. 2h, 30min" maxlength="10" />
+    <div class="modal-btns">
+      <button class="btn-secondary" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-confirm">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const STORAGE_KEY = 'weekly_planner_v3';
+  const COLORS = ['none','blue','green','yellow','red','purple','orange','pink'];
+
+  let weekOffset = 0;
+  let columns = [];
+  let tasks = {};
+  let dragState = null;
+  let activePopover = null;
+
+  function getWeekStart(offset=0){
+    const now=new Date(), monday=new Date(now);
+    monday.setDate(now.getDate()-((now.getDay()+6)%7)+offset*7);
+    monday.setHours(0,0,0,0); return monday;
+  }
+  function dateStr(d){ return d.toISOString().slice(0,10); }
+  function taskKey(date,colId){ return `${dateStr(date)}_${colId}`; }
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  let saveTimer=null;
+  function save(){
+    localStorage.setItem(STORAGE_KEY,JSON.stringify({columns,tasks}));
+    const el=document.getElementById('save-indicator');
+    el.textContent='Saved ✓';
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{ el.textContent='All changes saved'; },1500);
+  }
+
+  function load(){
+    try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw){ const d=JSON.parse(raw); columns=d.columns||[]; tasks=d.tasks||{}; } }catch(e){}
+    if(!columns.length) columns=[{id:uid(),name:'Errands'},{id:uid(),name:'Task 1'},{id:uid(),name:'Task 2'},{id:uid(),name:'Task 3'}];
+  }
+
+  function render(){
+    const ws=getWeekStart(weekOffset);
+    document.getElementById('week-label').textContent=`${MONTH_NAMES[ws.getMonth()]} ${ws.getDate()} – ${ws.getDate()+6}`;
+    document.getElementById('week-subtitle').textContent=`Week of ${DAY_NAMES[ws.getDay()]}, ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`;
+
+    const cg=document.getElementById('colgroup');
+    cg.innerHTML='<col class="col-day"/>';
+    columns.forEach(()=>{ const c=document.createElement('col'); c.className='col-task'; cg.appendChild(c); });
+
+    const hr=document.getElementById('header-row');
+    hr.innerHTML='<th>Day</th>';
+    columns.forEach(col=>{
+      const th=document.createElement('th');
+      th.innerHTML=`<div class="th-actions"><input class="col-name-input" type="text" value="${esc(col.name)}" data-col="${col.id}" maxlength="30"/><button class="btn-del-col" data-col="${col.id}">×</button></div>`;
+      hr.appendChild(th);
+    });
+    hr.querySelectorAll('.col-name-input').forEach(inp=>{
+      inp.addEventListener('input',e=>{ const c=columns.find(c=>c.id===e.target.dataset.col); if(c){c.name=e.target.value;save();} });
+    });
+    hr.querySelectorAll('.btn-del-col').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        if(columns.length<=1) return alert('Need at least one column.');
+        if(!confirm('Remove column and all its tasks?')) return;
+        const id=btn.dataset.col;
+        columns=columns.filter(c=>c.id!==id);
+        Object.keys(tasks).forEach(k=>{ if(k.endsWith('_'+id)) delete tasks[k]; });
+        save(); render();
+      });
+    });
+
+    const today=dateStr(new Date());
+    const tbody=document.getElementById('table-body');
+    tbody.innerHTML='';
+
+    for(let i=0;i<7;i++){
+      const date=new Date(ws); date.setDate(ws.getDate()+i);
+      const ds=dateStr(date);
+      const tr=document.createElement('tr');
+      if(ds===today) tr.classList.add('today');
+
+      const dayTd=document.createElement('td');
+      dayTd.className='day-cell';
+      dayTd.innerHTML=`<div class="day-name">${DAY_NAMES[date.getDay()]}</div><div class="day-num">${date.getDate()}</div>`;
+      tr.appendChild(dayTd);
+
+      columns.forEach(col=>{
+        const td=document.createElement('td');
+        td.className='task-cell';
+        const key=taskKey(date,col.id);
+
+        td.addEventListener('dragover',e=>{ e.preventDefault(); td.classList.add('drag-over'); });
+        td.addEventListener('dragleave',e=>{ if(!td.contains(e.relatedTarget)) td.classList.remove('drag-over'); });
+        td.addEventListener('drop',e=>{
+          e.preventDefault(); td.classList.remove('drag-over');
+          if(!dragState||dragState.fromKey===key) return;
+          const {taskId,fromKey}=dragState;
+          const fromList=tasks[fromKey]||[];
+          const idx=fromList.findIndex(t=>t.id===taskId);
+          if(idx===-1) return;
+          const [moved]=fromList.splice(idx,1);
+          tasks[fromKey]=fromList;
+          if(!tasks[key]) tasks[key]=[];
+          tasks[key].push(moved);
+          save(); render();
+        });
+
+        const ul=document.createElement('ul');
+        ul.className='task-list';
+        (tasks[key]||[]).forEach(task=>ul.appendChild(makeTaskEl(task,key)));
+
+        const addBtn=document.createElement('button');
+        addBtn.className='btn-add-task';
+        addBtn.innerHTML='＋ add';
+        addBtn.addEventListener('click',()=>openModal(key));
+
+        td.appendChild(ul); td.appendChild(addBtn); tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  function makeTaskEl(task,key){
+    const li=document.createElement('li');
+    li.className='task-item'+(task.done?' done':'');
+    li.dataset.color=task.color||'none';
+    li.draggable=true;
+
+    li.addEventListener('dragstart',e=>{
+      setTimeout(()=>li.classList.add('dragging'),0);
+      dragState={taskId:task.id,fromKey:key};
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',task.text||'');
+    });
+    li.addEventListener('dragend',()=>{
+      li.classList.remove('dragging');
+      dragState=null;
+      document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+    });
+
+    const cb=document.createElement('input');
+    cb.type='checkbox'; cb.className='task-check'; cb.checked=task.done;
+    cb.addEventListener('change',()=>{ task.done=cb.checked; li.classList.toggle('done',task.done); save(); });
+
+    const span=document.createElement('div');
+    span.className='task-text';
+    span.contentEditable='true';
+    span.setAttribute('placeholder','Task…');
+    span.textContent=task.text;
+    span.addEventListener('input',()=>{ task.text=span.textContent; save(); });
+    span.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();span.blur();} });
+    span.addEventListener('mousedown',()=>{ li.draggable=false; });
+    span.addEventListener('blur',()=>{ li.draggable=true; });
+
+    const actions=document.createElement('div');
+    actions.className='task-actions';
+
+    const colorBtn=document.createElement('button');
+    colorBtn.className='btn-color';
+    colorBtn.title='Highlight colour';
+    colorBtn.textContent='🎨';
+    colorBtn.addEventListener('click',e=>{ e.stopPropagation(); showColorPopover(task,li,colorBtn); });
+
+    const delBtn=document.createElement('button');
+    delBtn.className='btn-del-task';
+    delBtn.title='Delete task';
+    delBtn.textContent='×';
+    delBtn.addEventListener('click',()=>{ tasks[key]=(tasks[key]||[]).filter(t=>t.id!==task.id); save(); render(); });
+
+    actions.appendChild(colorBtn);
+    actions.appendChild(delBtn);
+
+    li.appendChild(cb);
+    li.appendChild(span);
+    if(task.duration){ const dur=document.createElement('span'); dur.className='task-duration'; dur.textContent=`(${task.duration})`; li.appendChild(dur); }
+    li.appendChild(actions);
+    return li;
+  }
+
+  function showColorPopover(task,li,anchor){
+    closeColorPopover();
+    const pop=document.createElement('div');
+    pop.className='color-popover';
+
+    COLORS.forEach(color=>{
+      const sw=document.createElement('button');
+      sw.className='color-swatch'+((task.color||'none')===color?' active':'');
+      sw.dataset.color=color;
+      sw.title=color==='none'?'No colour':color[0].toUpperCase()+color.slice(1);
+      sw.addEventListener('click',e=>{
+        e.stopPropagation();
+        task.color=color;
+        li.dataset.color=color;
+        save();
+        closeColorPopover();
+      });
+      pop.appendChild(sw);
+    });
+
+    document.body.appendChild(pop);
+    const rect=anchor.getBoundingClientRect();
+    let top=rect.bottom+6, left=rect.left;
+    const pw=pop.offsetWidth;
+    if(left+pw>window.innerWidth-8) left=window.innerWidth-pw-8;
+    if(top+40>window.innerHeight-8) top=rect.top-48;
+    pop.style.top=top+'px'; pop.style.left=left+'px';
+    activePopover=pop;
+
+    setTimeout(()=>document.addEventListener('click',closeColorPopover,{once:true}),0);
+  }
+
+  function closeColorPopover(){ if(activePopover){activePopover.remove();activePopover=null;} }
+
+  let pendingKey=null;
+  function openModal(key){ pendingKey=key; document.getElementById('modal-task-name').value=''; document.getElementById('modal-duration').value=''; document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-task-name').focus(),50); }
+  function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); pendingKey=null; }
+  function confirmModal(){
+    const name=document.getElementById('modal-task-name').value.trim(); if(!name) return;
+    const duration=document.getElementById('modal-duration').value.trim();
+    if(!tasks[pendingKey]) tasks[pendingKey]=[];
+    tasks[pendingKey].push({id:uid(),text:name,done:false,duration,color:'none'});
+    save(); render(); closeModal();
+  }
+
+  document.getElementById('modal-cancel').addEventListener('click',closeModal);
+  document.getElementById('modal-confirm').addEventListener('click',confirmModal);
+  document.getElementById('modal-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('modal-overlay')) closeModal(); });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') closeModal();
+    if(e.key==='Enter'&&document.getElementById('modal-overlay').classList.contains('open')) confirmModal();
+  });
+
+  document.getElementById('prev-week').addEventListener('click',()=>{ weekOffset--; render(); });
+  document.getElementById('next-week').addEventListener('click',()=>{ weekOffset++; render(); });
+  document.getElementById('add-col-btn').addEventListener('click',()=>{
+    columns.push({id:uid(),name:'New Column'}); save(); render();
+    const inputs=document.querySelectorAll('.col-name-input');
+    if(inputs.length){ const last=inputs[inputs.length-1]; last.focus(); last.select(); }
+  });
+
+  load(); render();
+</script>
+</body>
+</html>
